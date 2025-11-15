@@ -520,6 +520,7 @@ function AtsCvModal({
           windowHeight: el.scrollHeight,
           letterRendering: true,
         },
+        // @ts-ignore
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       })
