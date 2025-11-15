@@ -1,4 +1,4 @@
-// File: D:\tugas\magang\project\new\ark-work\frontend\src\app\profile\page.tsx
+// File: D:\tugas\magang\frontend-arkwork1\src\app\profile\page.tsx
 import * as entry from '../../../../src/app/profile/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

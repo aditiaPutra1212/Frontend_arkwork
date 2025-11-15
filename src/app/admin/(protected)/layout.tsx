@@ -4,7 +4,6 @@ import React from "react";
 import AdminSidebar from "./components/AdminSidebar";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-
 /**
  * Admin Root Layout (single-file solution)
  *
@@ -20,6 +19,8 @@ import { cookies, headers } from "next/headers";
  *  - Backend must expose /api/admin/me and set admin cookie (admin_token) from signin.
  *  - This is a pragmatic single-file fix; recommended long-term: move protected pages under route-group (protected).
  */
+export const dynamic = 'force-dynamic';
+
 
 export const metadata: Metadata = {
   title: "Admin | ArkWork",

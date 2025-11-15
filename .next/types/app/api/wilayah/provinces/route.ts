@@ -1,4 +1,4 @@
-// File: D:\tugas\magang\project\new\ark-work\frontend\src\app\api\wilayah\provinces\route.ts
+// File: D:\tugas\magang\frontend-arkwork1\src\app\api\wilayah\provinces\route.ts
 import * as entry from '../../../../../../src/app/api/wilayah/provinces/route.js'
 import type { NextRequest } from 'next/server.js'
 
