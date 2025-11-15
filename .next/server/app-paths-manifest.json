@@ -1,0 +1,8 @@
+{
+  "/page": "app/page.js",
+  "/auth/signin/page": "app/auth/signin/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/cv/page": "app/cv/page.js",
+  "/api/wilayah/provinces/route": "app/api/wilayah/provinces/route.js"
+}
