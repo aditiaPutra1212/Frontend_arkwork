@@ -120,17 +120,17 @@ export default function Footer() {
             </h4>
             <ul className="mt-3 space-y-2">
               <li>
-                <Link href="/terms" className={linkCls}>
+                <Link href="/terms" prefetch={false} className={linkCls}>
                   {t("footer.links.terms")}
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className={linkCls}>
+                <Link href="/privacy" prefetch={false} className={linkCls}>
                   {t("footer.links.privacy")}
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className={linkCls}>
+                <Link href="/cookies" prefetch={false} className={linkCls}>
                   {t("footer.links.cookies")}
                 </Link>
               </li>

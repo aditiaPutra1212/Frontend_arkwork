@@ -593,16 +593,14 @@ export default function AuthPage() {
                     className="h-4 w-4 rounded border-slate-300 text-blue-600"
                   />
                   {tUp("agree.1")}{" "}
-                  <Link href="/terms" className="text-blue-700 hover:underline">
+                  <Link href="/terms" prefetch={false} className="text-blue-700 hover:underline">
                     {tUp("agree.terms")}
-                  </Link>{" "}
-                  {tUp("agree.and")}{" "}
-                  <Link
-                    href="/privacy"
-                    className="text-blue-700 hover:underline"
-                  >
+                  </Link>
+
+                  <Link href="/privacy" prefetch={false} className="text-blue-700 hover:underline">
                     {tUp("agree.privacy")}
                   </Link>
+
                   .
                 </label>
 
