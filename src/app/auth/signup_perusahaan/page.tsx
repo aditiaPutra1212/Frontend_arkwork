@@ -1,4 +1,3 @@
-// File: app/auth/company/page.tsx
 "use client";
 
 import {
@@ -20,6 +19,7 @@ import { useTranslations } from "next-intl";
 import Logo from "@/app/Images/logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff } from "lucide-react";
+import Cookies from "js-cookie"; // --- ADDED ---
 
 /* --------------------------------- Config --------------------------------- */
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
@@ -210,10 +210,33 @@ function savePaymentRecord(rec: PaymentRecord) {
 export default function Page() {
   const t = useTranslations("companySignup");
   const router = useRouter();
-  const { signinEmployer } = useAuth(); // dipakai untuk auto-login Step akhir
+  const { signinEmployer, user } = useAuth(); // --- MODIFIED: ambil user juga
 
   const [mode, setMode] = useState<Mode>("signin");
   const [error, setError] = useState<string | null>(null);
+
+  /* ========== SYNC TOKEN KE COOKIE SETIAP KALI user BERUBAH ========== */
+  useEffect(() => {
+    const anyUser: any = user;
+    const token =
+      anyUser?.token ??
+      anyUser?.accessToken ??
+      anyUser?.jwt ??
+      anyUser?.sessionToken ??
+      anyUser?.user?.token ??
+      null;
+
+    if (token) {
+      Cookies.set("arkwork_token", token, {
+        expires: 7,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+    } else {
+      Cookies.remove("arkwork_token");
+    }
+  }, [user]);
+  /* =================================================================== */
 
   /* ------------- SIGNIN (perusahaan) ------------- */
   const [siEmail, setSiEmail] = useState("");
@@ -227,11 +250,31 @@ export default function Page() {
     try {
       setSiBusy(true);
       setError(null);
-      await signinEmployer(siEmail.trim(), siPw);
+      const u: any = await signinEmployer(siEmail.trim(), siPw);
+
+      // Optional: langsung set token dari hasil signinEmployer kalau ada
+      if (u) {
+        const token =
+          u?.token ??
+          u?.accessToken ??
+          u?.jwt ??
+          u?.sessionToken ??
+          u?.user?.token ??
+          null;
+        if (token) {
+          Cookies.set("arkwork_token", token, {
+            expires: 7,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+          });
+        }
+      }
+
       router.replace("/employer");
       router.refresh();
     } catch (err: any) {
       setError(err?.message || "Email atau password salah");
+      Cookies.remove("arkwork_token");
     } finally {
       setSiBusy(false);
     }
@@ -594,7 +637,26 @@ export default function Page() {
       const loginEmail = (profile.email || email).trim();
       if (!loginEmail)
         throw new Error("Email tidak tersedia untuk login otomatis.");
-      await signinEmployer(loginEmail, pw);
+      const u: any = await signinEmployer(loginEmail, pw);
+
+      // Set cookie token (kalau backend kirim token di respons)
+      if (u) {
+        const token =
+          u?.token ??
+          u?.accessToken ??
+          u?.jwt ??
+          u?.sessionToken ??
+          u?.user?.token ??
+          null;
+        if (token) {
+          Cookies.set("arkwork_token", token, {
+            expires: 7,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+          });
+        }
+      }
+
       localStorage.setItem("ark_employer_id", employerId);
 
       router.replace("/employer");

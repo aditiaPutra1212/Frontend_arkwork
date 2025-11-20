@@ -1,22 +1,16 @@
 "use client";
 
-// --- ADDED ---
-import { useEffect } from "react";
-// -------------
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-// --- ADDED ---
 import { useRouter, useSearchParams } from "next/navigation";
-// -------------
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Eye, EyeOff } from "lucide-react";
+import Cookies from "js-cookie";
 
 import Logo from "@/app/Images/logo.png";
-// --- ADDED ---
 import { api, API_BASE } from "@/lib/api"; // Impor API_BASE
-// -------------
 
 /**
  * Helper Ikon Google (Bisa ditaruh di file terpisah jika mau)
@@ -56,10 +50,8 @@ export default function AuthPage() {
   const tUp = useTranslations("signup");
   const router = useRouter();
 
-  // --- ADDED ---
   const { signinUser, signup, user, refresh } = useAuth();
   const searchParams = useSearchParams();
-  // -------------
 
   type Mode = "signin" | "signup";
   const [mode, setMode] = useState<Mode>("signin");
@@ -86,9 +78,33 @@ export default function AuthPage() {
     string | null
   >(null);
 
-  // --- ADDED ---
   // State untuk loading Google
   const [googleBusy, setGoogleBusy] = useState(false);
+
+  // ========== TOKEN -> COOKIE DARI user / hasil refresh ==========
+  useEffect(() => {
+    // Di sini kita coba ambil token dari berbagai kemungkinan shape objek
+    const anyUser: any = user;
+    const token =
+      anyUser?.token ??
+      anyUser?.accessToken ??
+      anyUser?.jwt ??
+      anyUser?.sessionToken ??
+      anyUser?.user?.token ??
+      null;
+
+    if (token) {
+      Cookies.set("arkwork_token", token, {
+        expires: 7, // 7 hari
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+    } else {
+      // Kalau tidak ada user/token, pastikan cookie dihapus
+      Cookies.remove("arkwork_token");
+    }
+  }, [user]);
+  // ===============================================================
 
   // Efek untuk menangani callback dari Google
   useEffect(() => {
@@ -100,29 +116,23 @@ export default function AuthPage() {
         tIn("error.google") || "Google sign-in failed. Please try again.",
       );
       setGoogleBusy(false);
-      // Bersihkan URL dari parameter error
       router.replace("/auth/signin");
     } else if (fromGoogle === "google" && !user) {
-      // Sukses dari Google, backend sudah set cookie.
-      // Kita perlu me-refresh state auth di frontend
-      setGoogleBusy(true); // Tampilkan loading
+      setGoogleBusy(true);
       setError(null);
       console.log("Google callback success, refreshing session...");
-      refresh(); // Panggil refresh dari useAuth
+      refresh();
     }
   }, [searchParams, router, tIn, refresh, user]);
 
-  // Efek untuk me-redirect SETELAH user berhasil di-refresh
+  // Efek untuk me-redirect SETELAH user berhasil di-refresh (Google)
   useEffect(() => {
     const fromGoogle = searchParams.get("from");
-    // Jika user sudah ada (setelah refresh) DAN kita datang dari Google
     if (user && fromGoogle === "google") {
       console.log("User populated after Google refresh, redirecting...");
       redirectByRole(user);
-      // URL akan otomatis bersih karena kita pindah halaman
     }
-  }, [user, searchParams]); // Perhatikan 'user'
-  // -------------
+  }, [user, searchParams]);
 
   const suStrong =
     suPw.length >= 8 &&
@@ -147,7 +157,6 @@ export default function AuthPage() {
       router.push("/dashboard");
     }
 
-    // force re-render Nav & komponen yang baca session
     router.refresh();
   }
 
@@ -156,7 +165,28 @@ export default function AuthPage() {
     setSiBusy(true);
     setError(null);
     try {
-      const u = await signinUser(siEmailOrUsername.trim(), siPw);
+      const u: any = await signinUser(siEmailOrUsername.trim(), siPw);
+
+      // ========== SET TOKEN KE COOKIE DARI RESPONS signin ==========
+      if (u) {
+        const token =
+          u?.token ??
+          u?.accessToken ??
+          u?.jwt ??
+          u?.sessionToken ??
+          u?.user?.token ??
+          null;
+
+        if (token) {
+          Cookies.set("arkwork_token", token, {
+            expires: 7,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+          });
+        }
+      }
+      // ============================================================
+
       if (u) redirectByRole(u);
     } catch (err: any) {
       const msg =
@@ -164,6 +194,9 @@ export default function AuthPage() {
         (err as { message?: string })?.message ||
         tIn("error.default");
       setError(msg);
+
+      // Kalau login gagal, pastikan token dihapus
+      Cookies.remove("arkwork_token");
     } finally {
       setSiBusy(false);
     }
@@ -171,11 +204,9 @@ export default function AuthPage() {
 
   async function onSignup(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Reset pesan error dan sukses
     setError(null);
     setSignupSuccessMessage(null);
 
-    // Validasi frontend (agree, password match)
     if (!suAgree) {
       setError(tUp("error.agree"));
       return;
@@ -185,65 +216,57 @@ export default function AuthPage() {
       return;
     }
 
-    setSuBusy(true); // Mulai loading
+    setSuBusy(true);
 
     try {
-      // Panggil endpoint backend /auth/signup via proxy
-      // (Pastikan next.config.mjs punya aturan untuk /auth/signup)
-      const response = await api("/auth/signup", {
-        method: "POST", // Eksplisit POST
+      const response: any = await api("/auth/signup", {
+        method: "POST",
         json: {
           name: suName.trim(),
           email: suEmail.trim(),
-          password: suPw, // Password dikirim plain, backend akan hash
+          password: suPw,
         },
       });
 
-      // Cek respons dari backend
       if (response?.ok && response?.message) {
-        // Sukses! Tampilkan pesan dari backend
         setSignupSuccessMessage(response.message);
-        // Kosongkan form
         setSuName("");
         setSuEmail("");
         setSuPw("");
         setSuConfirm("");
         setSuAgree(false);
-        // Opsional: Pindah ke tab signin agar pesan lebih terlihat
-        // switchMode('signin');
+
+        // NOTE:
+        // Kalau mau auto-login setelah signup dan set cookie token,
+        // di sini bisa panggil signinUser / pakai response.token kalau backend mengirimkan.
+        // Contoh (opsional):
+        //
+        // if (response.token) {
+        //   Cookies.set("arkwork_token", response.token, { ... });
+        // }
+        //
       } else {
-        // Jika backend tidak mengembalikan format {ok: true, message: '...'}
-        // atau terjadi error lain di API call
         throw new Error(response?.message || tUp("error.default"));
       }
     } catch (err: any) {
-      // Tangani error dari API call (misal 409 Email exists, 500 server error)
       const msg =
-        // Coba ambil pesan error dari body respons JSON (jika ada)
         err?.response?.data?.message ||
-        // Coba ambil pesan error dari objek Error JS
         (err as { message?: string })?.message ||
-        // Fallback
         tUp("error.default");
       setError(msg);
     } finally {
-      setSuBusy(false); // Selesai loading
+      setSuBusy(false);
     }
   }
 
-  // --- ADDED ---
   // Handler untuk klik tombol Google
   function onGoogleSignin() {
     setGoogleBusy(true);
     setError(null);
-    // Kita redirect browser ke endpoint backend
-    // Backend akan meng-handle redirect ke Google
     window.location.href = `${API_BASE}/auth/google`;
   }
-  // -------------
 
-  // --- ADDED ---
-  // Helper JSX untuk Tombol Google (agar tidak duplikat)
+  // Helper JSX untuk Tombol Google
   const googleButton = (
     <>
       <div className="relative my-4">
@@ -269,7 +292,6 @@ export default function AuthPage() {
       </button>
     </>
   );
-  // -------------
 
   return (
     <div className="min-h-[100svh] bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.08),transparent_60%),radial-gradient(ellipse_at_bottom,rgba(99,102,241,0.08),transparent_60%)] from-slate-50 via-white to-slate-100 flex items-center justify-center px-4 py-10">
@@ -324,8 +346,7 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* +++ TAMBAHKAN BLOK INI +++ */}
-          {/* Tampilkan Pesan Sukses Signup (hanya jika tidak ada error) */}
+          {/* Pesan Sukses Signup */}
           {signupSuccessMessage && !error && (
             <div
               className="mx-8 mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
@@ -334,7 +355,6 @@ export default function AuthPage() {
               {signupSuccessMessage}
             </div>
           )}
-          {/* +++ ------------------ +++ */}
 
           {/* Error */}
           {error && (
@@ -413,7 +433,7 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  disabled={siBusy || googleBusy} // --- MODIFIED ---
+                  disabled={siBusy || googleBusy}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-60"
                 >
                   {siBusy ? (
@@ -426,9 +446,7 @@ export default function AuthPage() {
                   )}
                 </button>
 
-                {/* --- ADDED --- */}
                 {googleButton}
-                {/* ------------- */}
 
                 <p className="mt-6 text-center text-sm text-slate-600">
                   {tIn("noAccount")}{" "}
@@ -590,7 +608,7 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  disabled={suBusy || googleBusy} // --- MODIFIED ---
+                  disabled={suBusy || googleBusy}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-60"
                 >
                   {suBusy ? (
@@ -603,9 +621,7 @@ export default function AuthPage() {
                   )}
                 </button>
 
-                {/* --- ADDED --- */}
                 {googleButton}
-                {/* ------------- */}
 
                 <p className="mt-6 text-center text-sm text-slate-600">
                   {tUp("haveAccount")}{" "}
