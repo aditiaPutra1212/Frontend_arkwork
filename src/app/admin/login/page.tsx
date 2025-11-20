@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react"; // 🆕 Tambah ikon dari lucide-react
+import { Eye, EyeOff } from "lucide-react"; // Ikon dari lucide-react
+import Cookies from "js-cookie"; // 🆕 Tambah js-cookie
 
 import Logo from "@/app/Images/Ungu__1_-removebg-preview.png";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const { signinAdmin } = useAuth();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,13 +35,39 @@ export default function AdminLoginPage() {
       console.log(
         `[AdminLogin] Attempting login for username: ${username.trim()}`,
       );
-      await signinAdmin(username.trim(), password);
+
+      // Ambil hasil login dari signinAdmin (jika mengembalikan data user/token)
+      const admin: any = await signinAdmin(username.trim(), password);
+
+      // 🆕 Set token ke cookies jika tersedia di respons
+      if (admin) {
+        const token =
+          admin?.token ??
+          admin?.accessToken ??
+          admin?.jwt ??
+          admin?.sessionToken ??
+          admin?.user?.token ??
+          null;
+
+        if (token) {
+          Cookies.set("arkwork_admin_token", token, {
+            expires: 7, // 7 hari
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+          });
+        }
+      }
+
       router.push("/admin/dashboard");
       router.refresh();
     } catch (err: any) {
       console.error("[AdminLogin] Login failed:", err);
+
+      // Jika error, hapus cookie token agar tidak nyangkut
+      Cookies.remove("arkwork_admin_token");
+
       const errorMessage =
-        err.message ||
+        err?.message ||
         "Login gagal. Periksa kembali username dan password Anda.";
       setError(errorMessage);
     } finally {
@@ -120,8 +148,7 @@ export default function AdminLoginPage() {
                 tabIndex={-1}
                 aria-label="Toggle password visibility"
               >
-                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}{" "}
-                {/* 👁️ Ikon modern */}
+                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
               </button>
             </div>
           </div>
